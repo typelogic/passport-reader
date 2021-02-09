@@ -56,6 +56,7 @@ import org.jmrtd.lds.SODFile;
 import org.jmrtd.lds.CardAccessFile;
 import org.jmrtd.lds.SecurityInfo;
 import org.jmrtd.lds.icao.DG14File;
+import org.jmrtd.lds.icao.DG15File;
 import org.jmrtd.lds.icao.DG1File;
 import org.jmrtd.lds.icao.DG2File;
 import org.jmrtd.lds.icao.MRZInfo;
@@ -71,6 +72,7 @@ import java.math.BigInteger;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
@@ -344,13 +346,36 @@ public class MainActivity extends AppCompatActivity {
         private DG1File dg1File;
         private DG2File dg2File;
         private DG14File dg14File;
+        private DG15File dg15File;
         private SODFile sodFile;
         private String imageBase64;
         private Bitmap bitmap;
         private boolean chipAuthSucceeded = false;
         private boolean passiveAuthSuccess = false;
+        private boolean activeAuthSucceeded = false;
 
         private byte[] dg14Encoded = new byte[0];
+
+        private void doActiveAuth(PassportService service) {
+            // Active Authentication using Data Group 15
+            byte[] dg15Encoded = new byte[0];
+            try {
+                CardFileInputStream dg15In = service.getInputStream(PassportService.EF_DG15);
+                dg15Encoded = IOUtils.toByteArray(dg15In);
+                ByteArrayInputStream dg15InByte = new ByteArrayInputStream(dg15Encoded);
+                dg15File = new DG15File(dg15InByte);
+
+                PublicKey publicKey = dg15File.getPublicKey();
+                SecureRandom random = new SecureRandom();
+                byte[] challenge = new byte[8];
+                random.nextBytes(challenge);
+                service.doAA(publicKey, null, "SHA256withRSA", challenge);
+                activeAuthSucceeded = true;
+            }
+            catch (Exception e) {
+                Log.w(TAG, e);
+            }
+        }
 
         private void doChipAuth(PassportService service) {
             try {
@@ -500,6 +525,9 @@ public class MainActivity extends AppCompatActivity {
                 // Then Passive Authentication using SODFile
                 doPassiveAuth();
 
+                // We perform Active Authentication using Data Group 15
+                doActiveAuth(service);
+
                 List<FaceImageInfo> allFaceImageInfos = new ArrayList<>();
                 List<FaceInfo> faceInfos = dg2File.getFaceInfos();
                 for (FaceInfo faceInfo : faceInfos) {
@@ -561,8 +589,17 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     chipAuthStr = getString(R.string.failed);
                 }
+
+                String activeAuthStr = "";
+                if (activeAuthSucceeded) {
+                    activeAuthStr = getString(R.string.pass);
+                } else {
+                    activeAuthStr = getString(R.string.failed);
+                }
+
                 intent.putExtra(ResultActivity.KEY_PASSIVE_AUTH, passiveAuthStr);
                 intent.putExtra(ResultActivity.KEY_CHIP_AUTH, chipAuthStr);
+                intent.putExtra(ResultActivity.KEY_ACTIVE_AUTH, activeAuthStr);
 
                 if (bitmap != null) {
                     if (encodePhotoToBase64) {
