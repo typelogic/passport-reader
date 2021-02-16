@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name">e-Passport Reader 0.2</string>
+    <string name="app_name">e-Passport Reader 0.3</string>
 
     <string name="input_passport_number">Passport number</string>
     <string name="input_expiration_date">Expiration date</string>
@@ -19,6 +19,7 @@
     <string name="result_passive_auth">Passive Authentication</string>
     <string name="result_chip_auth">Chip Authentication</string>
     <string name="result_active_auth">Active Authentication</string>
+    <string name="result_fullname">Full Name</string>
 
     <string name="pass">Pass</string>
     <string name="failed">Failed</string>

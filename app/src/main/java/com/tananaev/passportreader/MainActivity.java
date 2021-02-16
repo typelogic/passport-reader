@@ -55,6 +55,8 @@ import org.jmrtd.lds.ChipAuthenticationPublicKeyInfo;
 import org.jmrtd.lds.SODFile;
 import org.jmrtd.lds.CardAccessFile;
 import org.jmrtd.lds.SecurityInfo;
+import org.jmrtd.lds.icao.DG11File;
+import org.jmrtd.lds.icao.DG12File;
 import org.jmrtd.lds.icao.DG14File;
 import org.jmrtd.lds.icao.DG15File;
 import org.jmrtd.lds.icao.DG1File;
@@ -345,6 +347,8 @@ public class MainActivity extends AppCompatActivity {
 
         private DG1File dg1File;
         private DG2File dg2File;
+        private DG11File dg11File;
+        private DG12File dg12File;
         private DG14File dg14File;
         private DG15File dg15File;
         private SODFile sodFile;
@@ -513,6 +517,12 @@ public class MainActivity extends AppCompatActivity {
                 CardFileInputStream dg1In = service.getInputStream(PassportService.EF_DG1);
                 dg1File = new DG1File(dg1In);
 
+                CardFileInputStream dg11In = service.getInputStream(PassportService.EF_DG11);
+                dg11File = new DG11File(dg11In);
+
+                CardFileInputStream dg12In = service.getInputStream(PassportService.EF_DG12);
+                dg12File = new DG12File(dg12In);
+
                 CardFileInputStream dg2In = service.getInputStream(PassportService.EF_DG2);
                 dg2File = new DG2File(dg2In);
 
@@ -575,6 +585,7 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra(ResultActivity.KEY_GENDER, mrzInfo.getGender().toString());
                 intent.putExtra(ResultActivity.KEY_STATE, mrzInfo.getIssuingState());
                 intent.putExtra(ResultActivity.KEY_NATIONALITY, mrzInfo.getNationality());
+                intent.putExtra(ResultActivity.KEY_FULLNAME, dg11File.getNameOfHolder());
 
                 String passiveAuthStr = "";
                 if(passiveAuthSuccess) {

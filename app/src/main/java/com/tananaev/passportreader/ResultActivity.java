@@ -23,6 +23,7 @@ import android.widget.TextView;
 
 public class ResultActivity extends AppCompatActivity {
 
+    public static final String KEY_FULLNAME = "fullName";
     public static final String KEY_FIRST_NAME = "firstName";
     public static final String KEY_LAST_NAME = "lastName";
     public static final String KEY_GENDER = "gender";
@@ -39,6 +40,7 @@ public class ResultActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result);
 
+        ((TextView) findViewById(R.id.output_full_name)).setText(getIntent().getStringExtra(KEY_FULLNAME));
         ((TextView) findViewById(R.id.output_first_name)).setText(getIntent().getStringExtra(KEY_FIRST_NAME));
         ((TextView) findViewById(R.id.output_last_name)).setText(getIntent().getStringExtra(KEY_LAST_NAME));
         ((TextView) findViewById(R.id.output_gender)).setText(getIntent().getStringExtra(KEY_GENDER));
