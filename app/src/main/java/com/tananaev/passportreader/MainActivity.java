@@ -41,6 +41,7 @@ import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
 
 import net.sf.scuba.smartcards.CardFileInputStream;
 import net.sf.scuba.smartcards.CardService;
+import net.sf.scuba.smartcards.CardServiceException;
 
 import org.apache.commons.io.IOUtils;
 import org.bouncycastle.asn1.ASN1InputStream;
@@ -51,6 +52,7 @@ import org.bouncycastle.asn1.x509.Certificate;
 import org.jmrtd.BACKey;
 import org.jmrtd.BACKeySpec;
 import org.jmrtd.PassportService;
+import org.jmrtd.lds.ChipAuthenticationInfo;
 import org.jmrtd.lds.ChipAuthenticationPublicKeyInfo;
 import org.jmrtd.lds.SODFile;
 import org.jmrtd.lds.CardAccessFile;
@@ -66,6 +68,7 @@ import org.jmrtd.lds.iso19794.FaceImageInfo;
 import org.jmrtd.lds.iso19794.FaceInfo;
 
 import org.jmrtd.lds.PACEInfo;
+import org.jmrtd.protocol.EACCAResult;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -89,6 +92,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -381,7 +385,12 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private void doChipAuth(PassportService service) {
+        private void doChipAuth(PassportService service)
+        {
+            ArrayList<EACCAResult> eaccaResults = new ArrayList<>();
+            ArrayList<ChipAuthenticationPublicKeyInfo> chipAuthenticationPublicKeyInfos = new ArrayList<>();
+            ChipAuthenticationInfo chipAuthenticationInfo = null;
+
             try {
                 CardFileInputStream dg14In = service.getInputStream(PassportService.EF_DG14);
                 dg14Encoded = IOUtils.toByteArray(dg14In);
@@ -389,15 +398,32 @@ public class MainActivity extends AppCompatActivity {
                 dg14File = new DG14File(dg14InByte);
 
                 Collection<SecurityInfo> dg14FileSecurityInfos = dg14File.getSecurityInfos();
+
                 for (SecurityInfo securityInfo : dg14FileSecurityInfos) {
-                    if (securityInfo instanceof ChipAuthenticationPublicKeyInfo) {
-                        ChipAuthenticationPublicKeyInfo publicKeyInfo = (ChipAuthenticationPublicKeyInfo) securityInfo;
-                        BigInteger keyId = publicKeyInfo.getKeyId();
-                        PublicKey publicKey = publicKeyInfo.getSubjectPublicKey();
-                        String oid = publicKeyInfo.getObjectIdentifier();
-                        service.doEACCA(keyId, ChipAuthenticationPublicKeyInfo.ID_CA_ECDH_AES_CBC_CMAC_256, oid, publicKey);
-                        chipAuthSucceeded = true;
+                    if (securityInfo instanceof ChipAuthenticationInfo) {
+                        chipAuthenticationInfo = (ChipAuthenticationInfo)securityInfo;
+                    } else if (securityInfo instanceof ChipAuthenticationPublicKeyInfo) {
+                        chipAuthenticationPublicKeyInfos.add((ChipAuthenticationPublicKeyInfo)securityInfo);
                     }
+                }
+
+                Iterator publicKeyInfoIterator = chipAuthenticationPublicKeyInfos.iterator();
+
+                while (publicKeyInfoIterator.hasNext()) {
+                    ChipAuthenticationPublicKeyInfo authenticationPublicKeyInfo = (ChipAuthenticationPublicKeyInfo)publicKeyInfoIterator.next();
+                    try {
+                        EACCAResult doEACCA = service.doEACCA(
+                                chipAuthenticationInfo.getKeyId(),
+                                chipAuthenticationInfo.getObjectIdentifier(),
+                                chipAuthenticationInfo.getProtocolOIDString(),
+                                authenticationPublicKeyInfo.getSubjectPublicKey());
+
+                        eaccaResults.add(doEACCA);
+                    } catch (CardServiceException cse) {}
+                }
+
+                if (eaccaResults.size() > 0) {
+                    chipAuthSucceeded = true;
                 }
             }
             catch (Exception e) {
